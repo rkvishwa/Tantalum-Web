@@ -98,8 +98,8 @@ tantalum.knurdz.org CNAME api.metl.run
 After DNS has propagated, verify the rule from any Appwrite CLI login with project access:
 
 ```bash
-appwrite proxy update-rule-status --rule-id 6a2f4bb07a42118e368e
-appwrite proxy get-rule --rule-id 6a2f4bb07a42118e368e
+appwrite proxy update-rule-status --rule-id 6a2f4f4ae589c5d91e97
+appwrite proxy get-rule --rule-id 6a2f4f4ae589c5d91e97
 ```
 
 The rule must show `status` as `verified` before the public URL is expected to work with TLS.
