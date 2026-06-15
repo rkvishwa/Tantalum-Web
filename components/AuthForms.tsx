@@ -13,10 +13,38 @@ import { FormField, TextInput } from '@/components/ui/FormField';
 
 type Mode = 'login' | 'register';
 
+function validateAuthReturn(value: string | null) {
+  const raw = String(value || '').trim();
+  if (!raw.startsWith('/')) {
+    return '';
+  }
+
+  try {
+    const parsed = new URL(raw, 'https://tantalum.local');
+    if (parsed.origin !== 'https://tantalum.local') {
+      return '';
+    }
+    if (!['/auth/desktop', '/auth/mobile'].includes(parsed.pathname)) {
+      return '';
+    }
+    return `${parsed.pathname}${parsed.search}`;
+  } catch {
+    return '';
+  }
+}
+
 export function AuthForm({ mode }: { mode: Mode }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const desktopRedirect = searchParams.get('desktop') === '1' ? `/auth/desktop?${searchParams.toString()}` : '/dashboard';
+  const authReturn = useMemo(() => {
+    const directReturn = validateAuthReturn(searchParams.get('authReturn'));
+    if (directReturn) {
+      return directReturn;
+    }
+    return searchParams.get('desktop') === '1' ? `/auth/desktop?${searchParams.toString()}` : '';
+  }, [searchParams]);
+  const successRedirect = authReturn || '/dashboard';
+  const authReturnQuery = authReturn ? `?authReturn=${encodeURIComponent(authReturn)}` : '';
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
@@ -26,10 +54,10 @@ export function AuthForm({ mode }: { mode: Mode }) {
   useEffect(() => {
     void currentUser().then((user) => {
       if (user) {
-        router.replace(desktopRedirect);
+        router.replace(successRedirect);
       }
     });
-  }, [desktopRedirect, router]);
+  }, [successRedirect, router]);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -45,12 +73,12 @@ export function AuthForm({ mode }: { mode: Mode }) {
 
       if (mode === 'register') {
         await account.createVerification(siteUrl('/verify')).catch(() => undefined);
-        setMessage('Account created. Check your email to verify your account before using desktop login.');
+        setMessage('Account created. Check your email to verify your account before using app login.');
         setIsSuccess(true);
         return;
       }
 
-      router.replace(desktopRedirect);
+      router.replace(successRedirect);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Authentication failed.');
     } finally {
@@ -59,8 +87,12 @@ export function AuthForm({ mode }: { mode: Mode }) {
   }
 
   function oauth(provider: 'google' | 'github') {
-    const success = siteUrl(desktopRedirect);
-    const failure = siteUrl(`/login?error=oauth&desktop=${searchParams.get('desktop') || ''}`);
+    const success = siteUrl(successRedirect);
+    const failureParams = new URLSearchParams({ error: 'oauth' });
+    if (authReturn) {
+      failureParams.set('authReturn', authReturn);
+    }
+    const failure = siteUrl(`/login?${failureParams.toString()}`);
     const url = account.createOAuth2Session(provider, success, failure);
     if (url) {
       window.location.href = url.toString();
@@ -116,12 +148,12 @@ export function AuthForm({ mode }: { mode: Mode }) {
         <p style={{ marginTop: 16, fontSize: 13 }}>
           {mode === 'login' ? (
             <>
-              New here? <Link href="/register" style={{ color: 'var(--accent)' }}>Create an account</Link>.{' '}
+              New here? <Link href={`/register${authReturnQuery}`} style={{ color: 'var(--accent)' }}>Create an account</Link>.{' '}
               <Link href="/reset" style={{ color: 'var(--accent)' }}>Reset password</Link>.
             </>
           ) : (
             <>
-              Already have an account? <Link href="/login" style={{ color: 'var(--accent)' }}>Login</Link>.
+              Already have an account? <Link href={`/login${authReturnQuery}`} style={{ color: 'var(--accent)' }}>Login</Link>.
             </>
           )}
         </p>

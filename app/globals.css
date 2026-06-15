@@ -238,6 +238,30 @@ p {
   margin-top: 24px;
 }
 
+.row-actions,
+.panel-heading-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel-heading-row {
+  justify-content: space-between;
+}
+
+.muted {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.spin {
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 .section-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -462,13 +486,46 @@ p {
   padding-top: 16px;
 }
 
+.admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 20px;
+}
+
+.admin-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--bg-panel);
+  color: var(--text-soft);
+  cursor: pointer;
+}
+
+.admin-tabs button:hover,
+.admin-tabs button.active {
+  background: var(--bg-hover);
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--line));
+}
+
+.admin-two-col {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
 .portal-main {
   padding: 28px;
   overflow: auto;
 }
 
 .portal-main__inner {
-  max-width: 960px;
+  max-width: 1180px;
 }
 
 .metric-grid {
@@ -543,6 +600,66 @@ p {
 
 .table a:hover {
   text-decoration: underline;
+}
+
+.portal-split {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.4fr);
+  gap: 16px;
+}
+
+.row-list {
+  display: grid;
+  gap: 8px;
+}
+
+.row-list__item {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--bg-panel);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.row-list__item:hover,
+.row-list__item.active {
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--line));
+  background: var(--bg-hover);
+}
+
+.row-list__item span {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.message-list {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.message-bubble {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--bg-panel);
+}
+
+.message-bubble p {
+  margin: 6px 0 0;
+  white-space: pre-wrap;
+}
+
+.log-line {
+  display: block;
+  max-width: 520px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .price-grid {
@@ -648,6 +765,7 @@ p {
   .hero,
   .feature-row,
   .portal-layout,
+  .portal-split,
   .doc-layout {
     grid-template-columns: 1fr;
   }
@@ -657,6 +775,7 @@ p {
   }
 
   .product-visual__body,
+  .admin-two-col,
   .section-grid,
   .metric-grid,
   .price-grid,

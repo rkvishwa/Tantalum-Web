@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import type { User } from '@/lib/types';
 import { account, currentUser } from '@/lib/appwrite';
+import { PortalDataProvider } from '@/lib/portalData';
 import { Eyebrow } from '@/components/ui/Section';
 
 export function PortalShell({ children, admin = false }: { children: React.ReactNode; admin?: boolean }) {
@@ -44,6 +45,7 @@ export function PortalShell({ children, admin = false }: { children: React.React
   const links = [
     { href: '/dashboard', label: 'Dashboard' },
     { href: '/boards', label: 'Cloud Boards' },
+    { href: '/projects', label: 'Projects' },
     { href: '/agents', label: 'Agents' },
     { href: '/account', label: 'Account' },
     ...(user.labels || []).includes('admin') ? [{ href: '/admin', label: 'Admin' }] : [],
@@ -72,7 +74,9 @@ export function PortalShell({ children, admin = false }: { children: React.React
         </div>
       </aside>
       <section className="portal-main">
-        <div className="portal-main__inner">{children}</div>
+        <div className="portal-main__inner">
+          <PortalDataProvider user={user}>{children}</PortalDataProvider>
+        </div>
       </section>
     </main>
   );
