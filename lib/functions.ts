@@ -2,6 +2,7 @@
 
 import type { Models } from 'appwrite';
 import { account, functions } from './appwrite';
+import { config } from './config';
 
 export type FunctionEnvelope<T> = {
   ok: boolean;
@@ -30,12 +31,17 @@ function responseBody(execution: ExecutionLike) {
 
 let jwtCache: { jwt: string; expiresAt: number } | null = null;
 
-async function executionHeaders() {
+function attachJwt(headers: Record<string, string>, jwt: string) {
+  headers.authorization = `Bearer ${jwt}`;
+  headers['x-tantalum-user-jwt'] = jwt;
+}
+
+async function executionAuth() {
   const headers: Record<string, string> = { 'content-type': 'application/json' };
   const now = Date.now();
   if (jwtCache && jwtCache.expiresAt > now) {
-    headers.authorization = `Bearer ${jwtCache.jwt}`;
-    return headers;
+    attachJwt(headers, jwtCache.jwt);
+    return { headers, jwt: jwtCache.jwt };
   }
 
   try {
@@ -44,22 +50,27 @@ async function executionHeaders() {
       jwt: token.jwt,
       expiresAt: now + 10 * 60 * 1000,
     };
-    headers.authorization = `Bearer ${token.jwt}`;
+    attachJwt(headers, token.jwt);
   } catch {
     jwtCache = null;
   }
 
-  return headers;
+  return { headers, jwt: jwtCache?.jwt };
 }
 
 export async function executeFunction<T>(functionId: string, path: string, payload: Record<string, unknown> = {}) {
+  const auth = await executionAuth();
+  const executionPayload = auth.jwt && functionId === config.webAdminFunctionId
+    ? { ...payload, __tantalumUserJwt: auth.jwt }
+    : payload;
+
   const execution = await functions.createExecution(
     functionId,
-    JSON.stringify(payload),
+    JSON.stringify(executionPayload),
     false,
     path,
     'POST',
-    await executionHeaders(),
+    auth.headers,
   ) as ExecutionLike;
 
   const body = responseBody(execution);
