@@ -101,6 +101,65 @@ type UtilityForm = {
   priority: string;
 };
 
+type LoadOptions = {
+  force?: boolean;
+};
+
+type AdminCacheEntry<T> = {
+  timestamp: number;
+  data: T;
+};
+
+const ADMIN_CACHE_TTL_MS = 60 * 1000;
+const ADMIN_CACHE_PREFIX = 'tantalum-admin-cache:';
+const adminMemoryCache = new Map<string, AdminCacheEntry<unknown>>();
+
+function stablePayload(value: Record<string, unknown>) {
+  return JSON.stringify(Object.keys(value).sort().reduce<Record<string, unknown>>((result, key) => {
+    result[key] = value[key];
+    return result;
+  }, {}));
+}
+
+function adminCacheKey(path: string, payload: Record<string, unknown> = {}) {
+  return `${path}:${stablePayload(payload)}`;
+}
+
+function readAdminCache<T>(key: string): AdminCacheEntry<T> | null {
+  const memoryEntry = adminMemoryCache.get(key) as AdminCacheEntry<T> | undefined;
+  if (memoryEntry) {
+    return memoryEntry;
+  }
+
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    const stored = window.sessionStorage.getItem(`${ADMIN_CACHE_PREFIX}${key}`);
+    if (!stored) return null;
+    const parsed = JSON.parse(stored) as AdminCacheEntry<T>;
+    adminMemoryCache.set(key, parsed as AdminCacheEntry<unknown>);
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeAdminCache<T>(key: string, data: T) {
+  const entry: AdminCacheEntry<T> = { timestamp: Date.now(), data };
+  adminMemoryCache.set(key, entry as AdminCacheEntry<unknown>);
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.sessionStorage.setItem(`${ADMIN_CACHE_PREFIX}${key}`, JSON.stringify(entry));
+  } catch {
+    // Cache is best-effort; storage quota/privacy settings should not break admin.
+  }
+}
+
 function time(value?: string | null) {
   if (!value) return 'Never';
   return new Date(value).toLocaleString();
@@ -183,40 +242,76 @@ export function AdminPanel() {
     }
   }
 
-  async function load() {
-    const data = await run<AdminDashboard>('dashboard', '/dashboard');
+  async function runCached<T>(
+    label: string,
+    path: string,
+    payload: Record<string, unknown>,
+    apply: (data: T) => void,
+    options: LoadOptions = {},
+    ttlMs = ADMIN_CACHE_TTL_MS,
+  ) {
+    const key = adminCacheKey(path, payload);
+    const cached = readAdminCache<T>(key);
+    if (cached) {
+      apply(cached.data);
+      if (!options.force && Date.now() - cached.timestamp < ttlMs) {
+        return cached.data;
+      }
+    }
+
+    setBusy(label);
+    setStatus('');
+    try {
+      const data = await executeFunction<T>(config.webAdminFunctionId, path, payload);
+      writeAdminCache(key, data);
+      apply(data);
+      return data;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : `${label} failed.`;
+      setStatus(message);
+      if (cached) {
+        return cached.data;
+      }
+      throw error;
+    } finally {
+      setBusy('');
+    }
+  }
+
+  function applyDashboard(data: AdminDashboard) {
     setDashboard(data);
     setUsers(data.recentUsers);
   }
 
-  async function loadModels() {
-    const [managed, utility] = await Promise.all([
-      run<{ keys: AdminModelPoolKey[] }>('models', '/model-pool'),
-      run<{ models: AdminUtilityModel[] }>('utility-models', '/utility-model-pool'),
+  async function load(options: LoadOptions = {}) {
+    return runCached<AdminDashboard>('dashboard', '/dashboard', {}, applyDashboard, options);
+  }
+
+  async function loadModels(options: LoadOptions = {}) {
+    await Promise.all([
+      runCached<{ keys: AdminModelPoolKey[] }>('models', '/model-pool', {}, (data) => setModelPool(data.keys), options),
+      runCached<{ models: AdminUtilityModel[] }>('utility-models', '/utility-model-pool', {}, (data) => setUtilityPool(data.models), options),
     ]);
-    setModelPool(managed.keys);
-    setUtilityPool(utility.models);
   }
 
-  async function loadDatabaseStatus() {
-    const [database, functions] = await Promise.all([
-      run<DatabaseStatus>('database', '/database/status'),
-      run<FunctionStatus>('functions', '/functions/status'),
+  async function loadDatabaseStatus(options: LoadOptions = {}) {
+    await Promise.all([
+      runCached<DatabaseStatus>('database', '/database/status', {}, setDatabaseStatus, options),
+      runCached<FunctionStatus>('functions', '/functions/status', {}, setFunctionStatus, options),
     ]);
-    setDatabaseStatus(database);
-    setFunctionStatus(functions);
   }
 
-  async function loadInfra() {
-    setInfraStatus(await run<InfraStatus>('infra', '/infra/status'));
+  async function loadInfra(options: LoadOptions = {}) {
+    return runCached<InfraStatus>('infra', '/infra/status', {}, setInfraStatus, options);
   }
 
-  async function loadLogSources() {
-    const data = await run<{ sources: LogSource[] }>('log-sources', '/logs/sources');
-    setLogSources(data.sources);
-    if (data.sources.length && !data.sources.some((source) => source.id === logQuery.source)) {
-      setLogQuery((current) => ({ ...current, source: data.sources[0].id }));
-    }
+  async function loadLogSources(options: LoadOptions = {}) {
+    return runCached<{ sources: LogSource[] }>('log-sources', '/logs/sources', {}, (data) => {
+      setLogSources(data.sources);
+      if (data.sources.length && !data.sources.some((source) => source.id === logQuery.source)) {
+        setLogQuery((current) => ({ ...current, source: data.sources[0].id }));
+      }
+    }, options);
   }
 
   async function queryLogs(exportLogs = false) {
@@ -237,9 +332,8 @@ export function AdminPanel() {
     setLogs(data.entries || []);
   }
 
-  async function loadAudit() {
-    const data = await run<{ events: AdminAuditEvent[] }>('audit', '/audit/list', { limit: 100 });
-    setAudit(data.events);
+  async function loadAudit(options: LoadOptions = {}) {
+    return runCached<{ events: AdminAuditEvent[] }>('audit', '/audit/list', { limit: 100 }, (data) => setAudit(data.events), options);
   }
 
   useEffect(() => {
@@ -286,7 +380,7 @@ export function AdminPanel() {
   async function saveSetting() {
     await run('setting', '/settings/upsert', setting);
     setStatus('Setting updated.');
-    await load();
+    await load({ force: true });
   }
 
   async function saveManagedPool() {
@@ -297,7 +391,7 @@ export function AdminPanel() {
     });
     setStatus('Managed pool entry saved.');
     setManagedForm((current) => ({ ...current, keyId: data.key.id, apiKey: '' }));
-    await loadModels();
+    await loadModels({ force: true });
   }
 
   async function saveUtilityPool() {
@@ -307,13 +401,13 @@ export function AdminPanel() {
     });
     setStatus('Utility AI pool entry saved.');
     setUtilityForm((current) => ({ ...current, keyId: data.model.id, apiKey: '' }));
-    await loadModels();
+    await loadModels({ force: true });
   }
 
   async function testPool(path: string, payload: Record<string, unknown>) {
     await run('pool-test', path, payload);
     setStatus('Model pool health test passed.');
-    await loadModels();
+    await loadModels({ force: true });
   }
 
   async function preflightResize() {
@@ -325,13 +419,13 @@ export function AdminPanel() {
   async function startResize() {
     const data = await run<{ operation: AdminOperationRun }>('resize', '/infra/resize', resizeForm);
     setStatus(`Resize operation started: ${data.operation.id}`);
-    await loadInfra();
+    await loadInfra({ force: true });
   }
 
   async function pollOperation(operationId: string) {
     const data = await run<{ operation: AdminOperationRun }>('operation', '/infra/operation', { operationId });
     setStatus(`Operation ${data.operation.id}: ${data.operation.status}`);
-    await loadInfra();
+    await loadInfra({ force: true });
   }
 
   const dashboardTotals = dashboard?.totals;
@@ -342,7 +436,7 @@ export function AdminPanel() {
         eyebrow="Admin"
         title="Operations panel"
         actions={
-          <Button variant="secondary" type="button" onClick={() => void load()}>
+          <Button variant="secondary" type="button" onClick={() => void load({ force: true })}>
             {busy ? <LoaderCircle size={14} className="spin" /> : <RefreshCcw size={14} />} Refresh
           </Button>
         }
@@ -410,14 +504,14 @@ export function AdminPanel() {
         />
       ) : null}
 
-      {activeTab === 'database' ? <DatabaseAdmin databaseStatus={databaseStatus} functionStatus={functionStatus} refresh={loadDatabaseStatus} /> : null}
+      {activeTab === 'database' ? <DatabaseAdmin databaseStatus={databaseStatus} functionStatus={functionStatus} refresh={() => loadDatabaseStatus({ force: true })} /> : null}
 
       {activeTab === 'infra' ? (
         <InfraAdmin
           infra={infraStatus}
           form={resizeForm}
           setForm={setResizeForm}
-          refresh={loadInfra}
+          refresh={async () => { await loadInfra({ force: true }); }}
           preflight={preflightResize}
           resize={startResize}
           pollOperation={pollOperation}
@@ -436,7 +530,7 @@ export function AdminPanel() {
         />
       ) : null}
 
-      {activeTab === 'audit' ? <AuditAdmin events={audit} refresh={loadAudit} /> : null}
+      {activeTab === 'audit' ? <AuditAdmin events={audit} refresh={async () => { await loadAudit({ force: true }); }} /> : null}
     </>
   );
 }

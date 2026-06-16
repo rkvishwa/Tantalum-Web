@@ -59,14 +59,31 @@ async function executionAuth() {
 }
 
 export async function executeFunction<T>(functionId: string, path: string, payload: Record<string, unknown> = {}) {
+  if (functionId === config.webAdminFunctionId) {
+    const execution = await functions.createExecution(
+      functionId,
+      JSON.stringify(payload),
+      false,
+      path,
+      'POST',
+      { 'content-type': 'application/json' },
+    ) as ExecutionLike;
+
+    const body = responseBody(execution);
+    const parsed = JSON.parse(body || '{"ok":false,"error":"Function returned an empty response."}') as FunctionEnvelope<T>;
+    const statusCode = Number(execution.responseStatusCode ?? execution.statusCode ?? 0);
+    if (statusCode >= 400 || !parsed.ok || parsed.data === undefined) {
+      throw new Error(parsed.error || 'Function execution failed.');
+    }
+
+    return parsed.data;
+  }
+
   const auth = await executionAuth();
-  const executionPayload = auth.jwt && functionId === config.webAdminFunctionId
-    ? { ...payload, __tantalumUserJwt: auth.jwt }
-    : payload;
 
   const execution = await functions.createExecution(
     functionId,
-    JSON.stringify(executionPayload),
+    JSON.stringify(payload),
     false,
     path,
     'POST',
