@@ -1,7 +1,7 @@
 'use client';
 
 import type { Models } from 'appwrite';
-import { functions } from './appwrite';
+import { account, functions } from './appwrite';
 
 export type FunctionEnvelope<T> = {
   ok: boolean;
@@ -28,6 +28,30 @@ function responseBody(execution: ExecutionLike) {
   return typeof execution.responseBody === 'string' ? execution.responseBody : '';
 }
 
+let jwtCache: { jwt: string; expiresAt: number } | null = null;
+
+async function executionHeaders() {
+  const headers: Record<string, string> = { 'content-type': 'application/json' };
+  const now = Date.now();
+  if (jwtCache && jwtCache.expiresAt > now) {
+    headers.authorization = `Bearer ${jwtCache.jwt}`;
+    return headers;
+  }
+
+  try {
+    const token = await account.createJWT();
+    jwtCache = {
+      jwt: token.jwt,
+      expiresAt: now + 10 * 60 * 1000,
+    };
+    headers.authorization = `Bearer ${token.jwt}`;
+  } catch {
+    jwtCache = null;
+  }
+
+  return headers;
+}
+
 export async function executeFunction<T>(functionId: string, path: string, payload: Record<string, unknown> = {}) {
   const execution = await functions.createExecution(
     functionId,
@@ -35,7 +59,7 @@ export async function executeFunction<T>(functionId: string, path: string, paylo
     false,
     path,
     'POST',
-    { 'content-type': 'application/json' },
+    await executionHeaders(),
   ) as ExecutionLike;
 
   const body = responseBody(execution);
