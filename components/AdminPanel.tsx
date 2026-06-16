@@ -401,6 +401,7 @@ export function AdminPanel() {
           utility={utilityPool}
           managedForm={managedForm}
           utilityForm={utilityForm}
+          busy={busy}
           setManagedForm={setManagedForm}
           setUtilityForm={setUtilityForm}
           saveManagedPool={saveManagedPool}
@@ -542,12 +543,16 @@ function ModelsAdmin(props: {
   utility: AdminUtilityModel[];
   managedForm: ManagedForm;
   utilityForm: UtilityForm;
+  busy: string;
   setManagedForm: Dispatch<SetStateAction<ManagedForm>>;
   setUtilityForm: Dispatch<SetStateAction<UtilityForm>>;
   saveManagedPool: () => Promise<void>;
   saveUtilityPool: () => Promise<void>;
   testPool: (path: string, payload: Record<string, unknown>) => Promise<void>;
 }) {
+  const savingManaged = props.busy === 'managed-pool';
+  const savingUtility = props.busy === 'utility-pool';
+
   return (
     <div className="admin-two-col">
       <section className="settings-card">
@@ -565,7 +570,11 @@ function ModelsAdmin(props: {
           <FormField label="Power model"><TextInput value={props.managedForm.powerModel} onChange={(event) => props.setManagedForm((current) => ({ ...current, powerModel: event.target.value }))} /></FormField>
           <FormField label="API key"><TextInput type="password" value={props.managedForm.apiKey} onChange={(event) => props.setManagedForm((current) => ({ ...current, apiKey: event.target.value }))} /></FormField>
         </div>
-        <div className="hero-actions"><Button variant="primary" type="button" onClick={() => void props.saveManagedPool()}><Save size={14} /> Save managed key</Button></div>
+        <div className="hero-actions">
+          <Button variant="primary" type="button" disabled={savingManaged} onClick={() => void props.saveManagedPool()}>
+            {savingManaged ? <LoaderCircle size={14} className="spin" /> : <Save size={14} />} Save managed key
+          </Button>
+        </div>
         <PoolTable
           rows={props.managed.map((entry) => ({
             id: entry.id,
@@ -588,7 +597,11 @@ function ModelsAdmin(props: {
           <FormField label="Priority"><TextInput value={props.utilityForm.priority} onChange={(event) => props.setUtilityForm((current) => ({ ...current, priority: event.target.value }))} /></FormField>
           <FormField label="API key"><TextInput type="password" value={props.utilityForm.apiKey} onChange={(event) => props.setUtilityForm((current) => ({ ...current, apiKey: event.target.value }))} /></FormField>
         </div>
-        <div className="hero-actions"><Button variant="primary" type="button" onClick={() => void props.saveUtilityPool()}><Save size={14} /> Save utility model</Button></div>
+        <div className="hero-actions">
+          <Button variant="primary" type="button" disabled={savingUtility} onClick={() => void props.saveUtilityPool()}>
+            {savingUtility ? <LoaderCircle size={14} className="spin" /> : <Save size={14} />} Save utility model
+          </Button>
+        </div>
         <PoolTable
           rows={props.utility.map((entry) => ({
             id: entry.id,
