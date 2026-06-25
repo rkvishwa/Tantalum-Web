@@ -22,6 +22,16 @@
 
 The **Tantalum Web App** is the frontend gateway to the Tantalum ecosystem. Built with cutting-edge Next.js 15 and Appwrite, it offers a seamless experience ranging from the initial marketing splash page to a full-fledged dashboard and administrative portal.
 
+## 🌐 The Tantalum Ecosystem
+
+Tantalum is composed of three interconnected open-source projects that work together to provide a complete hardware development and deployment platform:
+
+1. **[Tantalum IDE](https://github.com/rkvishwa/Tantalum-IDE)**: The core desktop application. It provides the code editor, local workspace management, firmware compilation (via Arduino CLI), OTA deployment orchestration, and the Agentic AI coding assistant.
+2. **[Tantalum Web](https://github.com/rkvishwa/Tantalum-Web)**: The cloud portal and admin dashboard. It handles user authentication, cloud board management, firmware version tracking, AI agent settings, and administrative oversight.
+3. **[Tantalum Mobile](https://github.com/rkvishwa/Tantalum-Mobile)**: The companion Android app. Used for securely provisioning WiFi credentials to IoT boards in the field via BLE or SoftAP, bridging physical hardware to your cloud account without exposing credentials.
+
+---
+
 ## 🚀 Features
 
 - **Marketing Pages:** SEO-optimized landing pages to introduce Tantalum.
