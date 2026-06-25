@@ -1,105 +1,113 @@
-# Tantalum Web Portal
+<div align="center">
+  <img alt="Tantalum Logo" src="./images/1.jpeg" width="100%" />
 
-This folder is intentionally self-contained so it can be moved into its own Git repository and connected directly to the Appwrite Site named `home`.
+  # Tantalum Web App
 
-## Move To Separate Repo
+  [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+  [![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)](https://nextjs.org/)
+  [![Appwrite](https://img.shields.io/badge/Appwrite-13-fd366e?logo=appwrite)](https://appwrite.io/)
+  [![React](https://img.shields.io/badge/React-19-61dafb?logo=react)](https://react.dev/)
 
-From the current IDE repo, copy the contents of `sites/home` into the root of the new website repository:
+  **The unified marketing page, auth portal, user dashboard, and admin panel for the Tantalum platform.**
+</div>
 
-```powershell
-Copy-Item -Recurse -Force .\sites\home\* D:\Documents\projects\web\tantalum-home
-```
+## 📸 Screenshots
 
-The new repository root should contain `app`, `components`, `lib`, `public`, `package.json`, `package-lock.json`, `next.config.mjs`, and this `README.md`.
+<p align="center">
+  <img src="./images/1.jpeg" alt="Tantalum Web App Screenshot 1" width="48%">
+  <img src="./images/2.jpeg" alt="Tantalum Web App Screenshot 2" width="48%">
+</p>
 
-## Local Development
+## ✨ What is it?
 
-```bash
-npm ci
-cp .env.example .env.local
-npm run dev
-```
+The **Tantalum Web App** is the frontend gateway to the Tantalum ecosystem. Built with cutting-edge Next.js 15 and Appwrite, it offers a seamless experience ranging from the initial marketing splash page to a full-fledged dashboard and administrative portal.
 
-The portal uses public Appwrite browser SDK variables only. Do not add API keys or OAuth provider secrets to this website repository.
+## 🚀 Features
 
-## Appwrite Site Git Hosting
+- **Marketing Pages:** SEO-optimized landing pages to introduce Tantalum.
+- **Authentication Portal:** Secure login, registration, and session management.
+- **User Dashboard:** A comprehensive hub for users to manage their Tantalum experience.
+- **Admin Panel:** Powerful moderation and administration tools.
+- **Appwrite Integration:** Fully integrated with Appwrite for backend services and data synchronization.
 
-Use the existing Appwrite Site:
+## 🛠 Getting Started
 
-- Site ID: `69c40c1e001f39d53e15`
-- Public URL: `https://tantalum.knurdz.org`
-- Framework: `nextjs`
-- Runtime: `node-22`
-- Adapter: `ssr`
-- Install command: `npm install`
-- Build command: `npm run build`
-- Output directory: `./.next`
-- Provider root directory: `.`
+### Prerequisites
 
-After connecting the new Git repository to the Appwrite Site, run:
+- Node.js (v18 or higher)
+- npm, yarn, or pnpm
+- Access to an Appwrite instance (Cloud or Self-Hosted)
 
-```bash
-npm run appwrite:configure
-```
+### Installation
 
-This updates the Site build settings and upserts the public environment variables through the already logged-in Appwrite CLI. If the Site is already connected and you only need to refresh variables, run:
+1. **Clone the repository:**
+   ```bash
+   git clone <repository-url>
+   cd tantalum-web-app
+   ```
 
-```bash
-npm run appwrite:configure:vars
-```
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
 
-You can override defaults before running the script:
+3. **Configure Environment Variables:**
+   Copy the example environment file and fill in your Appwrite credentials.
+   ```bash
+   cp .env.example .env.local
+   ```
+   *(Update `.env.local` with your Appwrite endpoint, project ID, and other required variables).*
 
-```bash
-APPWRITE_SITE_PROVIDER_ROOT_DIRECTORY=. NEXT_PUBLIC_TANTALUM_WEB_APP_URL=https://tantalum.knurdz.org npm run appwrite:configure
-```
+4. **Run the development server:**
+   ```bash
+   npm run dev
+   ```
+   Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-On PowerShell:
+## 🏠 Self-Hosting Guide
 
-```powershell
-$env:APPWRITE_SITE_PROVIDER_ROOT_DIRECTORY = "."
-$env:NEXT_PUBLIC_TANTALUM_WEB_APP_URL = "https://tantalum.knurdz.org"
-npm run appwrite:configure
-```
+Tantalum is designed to be easily self-hostable alongside your Appwrite instance.
 
-If you have the Appwrite VCS installation and repository IDs, connect the Site from the CLI:
+1. **Set up Appwrite:**
+   Ensure your Appwrite instance is running. If you are self-hosting Appwrite, follow the [Appwrite self-hosting documentation](https://appwrite.io/docs/self-hosting).
 
-```powershell
-$env:APPWRITE_SITE_INSTALLATION_ID = "<installation-id>"
-$env:APPWRITE_SITE_PROVIDER_REPOSITORY_ID = "<repository-id>"
-$env:APPWRITE_SITE_PROVIDER_BRANCH = "main"
-$env:APPWRITE_SITE_PROVIDER_ROOT_DIRECTORY = "."
-npm run appwrite:configure
-```
+2. **Deploy the Frontend:**
+   The Tantalum Web App can be deployed anywhere Next.js runs (Vercel, Docker, Node.js server).
+   
+   To build for production:
+   ```bash
+   npm run build
+   npm run start
+   ```
 
-Find available installations and repositories with:
+3. **Configure Appwrite via Scripts:**
+   This project includes built-in scripts to automatically configure your Appwrite site resources (databases, collections, buckets).
+   ```bash
+   # Configure all Appwrite site resources
+   npm run appwrite:configure
 
-```powershell
-appwrite vcs list-installations
-appwrite vcs list-repositories --installation-id <installation-id> --type framework --search tantalum
-```
+   # Only configure environment variables needed for Appwrite
+   npm run appwrite:configure:vars
+   ```
 
-If `list-installations` returns zero, authorize the Git provider for the Appwrite project first. The Appwrite CLI can list and use VCS installations, but the provider authorization handshake itself is browser-based.
+## 👨‍💻 Development
 
-## Required Site Variables
+Check out the following documents to learn more about the project architecture and how to contribute:
 
-The defaults are listed in `.env.example`. Keep these values configured as Appwrite Site variables so Appwrite Git deployments build with the same public settings used locally.
+- [ARCHITECTURE.md](./ARCHITECTURE.md) - Deep dive into the structure and technical decisions.
+- [CONTRIBUTING.md](./CONTRIBUTING.md) - Guidelines for contributing to the project.
+- [SECURITY.md](./SECURITY.md) - Security policies and vulnerability reporting.
 
-OAuth provider credentials are not stored here. Configure Google and GitHub OAuth credentials on the Appwrite project through the Appwrite CLI when credentials are available.
+## 📜 Scripts
 
-## Custom Domain
+| Command | Description |
+|---|---|
+| `npm run dev` | Starts the Next.js development server on `127.0.0.1:3000`. |
+| `npm run build` | Builds the application for production usage. |
+| `npm run start` | Starts the production server. |
+| `npm run appwrite:configure` | Configures Appwrite collections, buckets, and settings based on `appwrite.config.json`. |
+| `npm run appwrite:configure:vars` | Only synchronizes variables required by the Appwrite environment. |
 
-The Appwrite proxy rule for `tantalum.knurdz.org` is created against the `home` Site. Add this DNS record at the DNS provider:
+## 📄 License
 
-```text
-tantalum.knurdz.org CNAME api.metl.run
-```
-
-After DNS has propagated, verify the rule from any Appwrite CLI login with project access:
-
-```bash
-appwrite proxy update-rule-status --rule-id 6a2f4f4ae589c5d91e97
-appwrite proxy get-rule --rule-id 6a2f4f4ae589c5d91e97
-```
-
-The rule must show `status` as `verified` before the public URL is expected to work with TLS.
+This project is licensed under the [MIT License](LICENSE) - see the LICENSE file for details.

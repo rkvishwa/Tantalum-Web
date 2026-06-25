@@ -64,6 +64,23 @@ function statusVariant(status?: string) {
   return 'default';
 }
 
+const BOARD_ONLINE_WINDOW_MS = 150000;
+const BOARD_CLOCK_SKEW_MS = 30000;
+
+function effectiveBoardStatus(board: Pick<BoardDocument, 'status' | 'lastSeen'>) {
+  const rawStatus = String(board.status || '').trim().toLowerCase();
+  if (['disabled', 'blocked', 'revoked'].includes(rawStatus)) return rawStatus;
+
+  if (!board.lastSeen) return rawStatus === 'pending' ? 'pending' : 'offline';
+
+  const lastSeen = Date.parse(board.lastSeen);
+  if (!Number.isFinite(lastSeen)) return rawStatus === 'pending' ? 'pending' : 'offline';
+
+  const ageMs = Date.now() - lastSeen;
+  if (ageMs < -BOARD_CLOCK_SKEW_MS) return 'offline';
+  return ageMs <= BOARD_ONLINE_WINDOW_MS ? 'online' : 'offline';
+}
+
 async function sha256Hex(file: File) {
   const hash = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
   return Array.from(new Uint8Array(hash)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
@@ -87,7 +104,7 @@ function firmwareFilePermissions(userId: string) {
 
 export function DashboardPanel() {
   const { boards, projects, agent, errors, loading, refreshDashboard } = usePortalData();
-  const online = boards.filter((board) => board.status === 'online' || board.status === 'connected').length;
+  const online = boards.filter((board) => effectiveBoardStatus(board) === 'online').length;
   const pendingOta = boards.filter((board) => board.otaStatus === 'pending').length;
   const credits = agent?.creditAccount;
 
@@ -118,7 +135,7 @@ export function DashboardPanel() {
             empty="No boards registered yet."
             rows={boards.slice(0, 6).map((board) => [
               <Link key="name" href={`/boards/${board.$id}`}>{board.name}</Link>,
-              <Badge key="status" variant={statusVariant(board.status)}>{board.status || 'pending'}</Badge>,
+              <Badge key="status" variant={statusVariant(effectiveBoardStatus(board))}>{effectiveBoardStatus(board)}</Badge>,
               board.firmwareVersion || '-',
             ])}
           />
@@ -231,7 +248,7 @@ export function BoardsPanel() {
               <tr key={board.$id}>
                 <td><Link href={`/boards/${board.$id}`}>{board.name}</Link></td>
                 <td><code>{board.boardType}</code></td>
-                <td><Badge variant={statusVariant(board.status)}>{board.status || 'pending'}</Badge></td>
+                <td><Badge variant={statusVariant(effectiveBoardStatus(board))}>{effectiveBoardStatus(board)}</Badge></td>
                 <td><Badge variant={statusVariant(board.otaStatus)}>{board.otaStatus || 'idle'}</Badge></td>
                 <td>{board.provisioningStatus || 'pending'}</td>
                 <td>{time(board.lastSeen)}</td>
@@ -443,7 +460,7 @@ export function BoardDetailPanel({ boardId }: { boardId: string }) {
         </section>
       ) : null}
       <div className="metric-grid">
-        <div className="metric"><span>Status</span><strong>{board.status || 'pending'}</strong></div>
+        <div className="metric"><span>Status</span><strong>{effectiveBoardStatus(board)}</strong></div>
         <div className="metric"><span>OTA</span><strong>{board.otaStatus || 'idle'}</strong></div>
         <div className="metric"><span>Runtime</span><strong>{board.runtimeVersion || '-'}</strong></div>
         <div className="metric"><span>Last seen</span><strong style={{ fontSize: 14 }}>{time(board.lastSeen)}</strong></div>
